@@ -2,7 +2,7 @@ from locust import HttpUser, task, between
 import random
 import json
 
-words = json.load(open("words.json"))
+words = json.load(open("data/words.json"))
 
 
 class MyUser(HttpUser):
