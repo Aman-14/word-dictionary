@@ -8,19 +8,20 @@ use axum::{
     routing, Router,
 };
 use serde::Deserialize;
-use storage::Storage;
+use storage::{backend::StorageBackend, file::FileBackend, Db};
 
 mod storage;
 
 struct AppState {
-    storage: Storage,
+    storage: Db<FileBackend>,
 }
 
 #[tokio::main]
 async fn main() {
     let app_state = Arc::new(AppState {
-        storage: Storage::new(),
+        storage: Db::new(FileBackend::new()),
     });
+
     let app = Router::new()
         .route("/", routing::get(index))
         .route("/definition", routing::get(get_definition))
@@ -46,8 +47,13 @@ async fn get_definition(
     Query(Word { word }): Query<Word>,
     app_state: State<Arc<AppState>>,
 ) -> Result<String, StatusCode> {
-    return app_state
-        .storage
-        .get_definition(word)
-        .map_or(Err(StatusCode::NOT_FOUND), Ok);
+    dbg!(std::thread::current().id());
+    let handle = tokio::task::spawn_blocking(move || {
+        return app_state
+            .storage
+            .get_definition(word)
+            .map_or(Err(StatusCode::NOT_FOUND), Ok);
+    });
+    let res = handle.await.unwrap();
+    return res;
 }
